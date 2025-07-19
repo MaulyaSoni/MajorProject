@@ -1,1 +1,1 @@
-# AirBnb_Clone
+# MajorProject
