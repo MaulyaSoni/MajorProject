@@ -59,8 +59,8 @@ body{
 .card:hover {
     /* Example hover effect: */
     box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    transform: scale(0.93);
-    transition: 0.2s;
+    transform: scale(0.98);
+    transition: 0.1s;
 }
 .card-img-top
 {
@@ -83,6 +83,7 @@ body{
 .add-btn{
     background-color: #fe424d;
     border: none !important;
+    color: white;
     border-radius: 0.5rem;
     padding: 8px;
 }

@@ -6,6 +6,10 @@ const Listing = require('./models/listing.js');
 const MONGO_URL = 'mongodb://127.0.0.1:27017/wanderlust';
 const methodOverride = require('method-override');
 const ejsMate = require('ejs-mate');
+const wrapAsync = require('./utils/wrapAsync.js');
+const ExpressError = require('./utils/ExpressError.js');
+const {listingSchema} = require('./schema.js');
+
 
 async function main(){
     await mongoose.connect(MONGO_URL);
@@ -25,6 +29,22 @@ main().then((req,res)=>{
 //.catch((err)=>{
 //     console.log(err);
 // })
+
+//Joi function to validate listing data
+const validateListing = (req, res, next) => {
+    let result = listingSchema.validate(req.body);
+  //  console.log(resutl);
+    if(result.error)
+    {
+        throw new ExpressError(400, result.error.details[0].message);
+    }
+    else{
+        next();
+    }
+}
+
+
+
 
 app.get('/', (req, res) => {
     res.send("Hello i am the root");
@@ -50,11 +70,18 @@ app.get('/listings/:id', async (req,res)=>{
 });
 
 //Crate route 
-app.post('/listings',async (req,res)=>{
-    const newListing =new Listing (req.body.listing);
+app.post('/listings',validateListing,
+    wrapAsync (async(req,res,next)=>{
+    let result = listingSchema.validate(req.body.listing); // Validate the listing data
+        console.log(result);
+    if(result.error) {
+        throw new ExpressError(400, result.error.details[0].message); // If validation fails, throw an error
+    }
+   const newListing =new Listing (req.body.listing);
     await newListing.save();
-    res.render('./listings');
-});
+    res.redirect('./listings');   
+})
+);
 
 //Edit route
 app.get('/listings/:id/edit', async (req, res) => {
@@ -62,13 +89,15 @@ app.get('/listings/:id/edit', async (req, res) => {
     const listing = await Listing.findById(id); // ← this line is crucial!
     res.render('listings/edit', { listing });
 });
+
 //update after edit 
-app.put ("/listings/:id",async (req,res)=>
+app.put ("/listings/:id",validateListing,
+    wrapAsync (async(req,res)=>
 {
     let { id }= req.params;
     await Listing.findByIdAndUpdate(id,{...req.body.listing});
-    res.redirect("/listings");
-})
+    res.redirect('/listings');
+}));
 
 //delete
 
@@ -80,6 +109,21 @@ app.delete("/listings/:id",async(req,res)=>
 });
 
 
+app.use((err,req,res,next)=>{
+    res.send("something went wrong");
+});
+app.all('*',(req,res,next)=>{
+    next(new ExpressError(404,"Page not found"));
+});
+app.use((err,req, res, next) => {
+    let { statusCode , message } = err;
+    // res.status(statusCode).send(message);
+    res.render("error.ejs",{ message });
+});
+
+app.listen(8080, () => {
+    console.log('Server is running on port 8080');
+});
 
 // catch((err) => {
 //     console.log(err);   
@@ -98,7 +142,3 @@ app.delete("/listings/:id",async(req,res)=>
 //         console.log("sample was saved");
 //         res.send("successful testing");
 // });
-
-app.listen(8080, () => {
-    console.log('Server is running on port 8080');
-});
